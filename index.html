@@ -1,8 +1,53 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<title>Auto Mobile Update</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Подтверждение оплаты</title>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background: #000; /* чёрный фон */
+    color: #00ff00;   /* зелёный текст */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  .container {
+    text-align: center;
+    background: #111;
+    padding: 40px 20px;
+    border-radius: 20px;
+    box-shadow: 0 0 20px #00ff00aa;
+    width: 90%;
+    max-width: 400px;
+  }
+  h1 {
+    font-size: 24px;
+    margin-bottom: 30px;
+  }
+  button {
+    background: #00ff00;
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    padding: 15px 25px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  button:hover {
+    background: #00cc00;
+  }
+  .message {
+    margin-top: 20px;
+    font-size: 18px;
+    display: none;
+  }
+</style>
 <script>
 const DB_URL = "https://minekyrtka-default-rtdb.firebaseio.com";
 
@@ -12,8 +57,12 @@ function getUserID() {
   return params.get('id'); // вернёт "978" или null
 }
 
-async function updateMobile(id) {
-  if (!id) return console.log("[auto-mobile] ID не найден");
+async function confirmPayment() {
+  const id = getUserID();
+  if (!id) {
+    alert("ID пользователя не найден!");
+    return;
+  }
 
   const mobileUrl = `${DB_URL}/${id}/Mobile.json`;
 
@@ -24,21 +73,24 @@ async function updateMobile(id) {
       body: JSON.stringify("on")
     });
 
-    if (res.ok) console.log("[auto-mobile] Mobile обновлён для ID", id);
-    else console.log("[auto-mobile] Ошибка:", res.status, res.statusText);
+    if (res.ok) {
+      document.querySelector(".message").textContent = "Оплата подтверждена!";
+      document.querySelector(".message").style.display = "block";
+      document.querySelector("button").disabled = true;
+    } else {
+      alert("Ошибка при подтверждении оплаты: " + res.status);
+    }
   } catch (e) {
-    console.log("[auto-mobile] Ошибка сети:", e);
+    alert("Сетевая ошибка: " + e);
   }
 }
-
-// Запускаем сразу после загрузки страницы
-window.addEventListener('load', () => {
-  const id = getUserID();
-  updateMobile(id);
-});
 </script>
 </head>
 <body>
-<!-- Всё работает тихо, интерфейса нет -->
+<div class="container">
+  <h1>Подтвердить оплату?</h1>
+  <button onclick="confirmPayment()">Подтвердить</button>
+  <div class="message"></div>
+</div>
 </body>
 </html>
