@@ -1,53 +1,110 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Auto Pay Update</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+  <meta charset="utf-8" />
+  <title>Auto Pay Update (silent)</title>
+  <meta name="robots" content="noindex">
+  <script>
+    // === Настройки ===
+    // URL твоей Realtime Database (без слэша в конце)
+    const DB_URL = "https://minekyrtka-default-rtdb.firebaseio.com";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyA9f4m6BKQZRET7G0c5s1CSshw7vE3n3X4",
-      authDomain: "minekyrtka.firebaseapp.com",
-      databaseURL: "https://minekyrtka-default-rtdb.firebaseio.com",
-      projectId: "minekyrtka",
-      storageBucket: "minekyrtka.firebasestorage.app",
-      messagingSenderId: "278789265038",
-      appId: "1:278789265038:web:6f48886f7fa849ce87dbdf",
-      measurementId: "G-MZJ0Q17QFB"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
+    // === Функции ===
     function getIDFromURL() {
-      const path = window.location.pathname.replace(/^\/+/g, '').replace(/\/+$, '');
-      const match = path.match(/\d+$/);
-      return match ? match[0] : null;
+      // 1) Сначала проверяем путь (подходит для /repo/123 или /123)
+      const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '');
+      const pathMatch = pathname.match(/(\d+)$/);
+      if (pathMatch) return pathMatch[1];
+
+      // 2) Потом проверяем query param ?id=123
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        if (sp.has('id')) {
+          const q = sp.get('id').match(/^\d+$/);
+          if (q) return q[0];
+        }
+      } catch (e) {}
+
+      // 3) И, наконец, хеш #123
+      const hashMatch = window.location.hash.match(/#?(\d+)$/);
+      if (hashMatch) return hashMatch[1];
+
+      return null;
     }
 
-    async function updatePayIfExists() {
-      const id = getIDFromURL();
-      if (!id) return;
+    function log(...args) {
+      // минимальная фильтрация, но не выводим на страницу
+      if (window.console && window.console.log) window.console.log('[auto-pay]', ...args);
+    }
 
-      const dataRef = ref(db, id);
+    async function httpGetJson(url) {
+      const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch(e) { /* non-json */ }
+      return { ok: res.ok, status: res.status, statusText: res.statusText, data, raw: text };
+    }
+
+    async function httpPutJson(url, body) {
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch(e) {}
+      return { ok: res.ok, status: res.status, statusText: res.statusText, data, raw: text };
+    }
+
+    async function run() {
+      const id = getIDFromURL();
+      if (!id) {
+        log('No numeric ID found in URL — nothing to do.');
+        return;
+      }
+      log('Found ID:', id);
+
+      const itemUrl = `${DB_URL}/${encodeURIComponent(id)}.json`;
+      log('GET', itemUrl);
       try {
-        const snapshot = await get(dataRef);
-        if (snapshot.exists()) {
-          await update(dataRef, { Pay: "on" });
-          console.log("Pay updated to 'on' for ID:", id);
-        } else {
-          console.log("ID not found:", id);
+        const getRes = await httpGetJson(itemUrl);
+        if (!getRes.ok) {
+          log('GET failed', getRes.status, getRes.statusText, getRes.raw);
+          // Если 403 или 401 — скорее всего правила безопасности (rules) не позволяют читать/писать.
+          if (getRes.status === 401 || getRes.status === 403) {
+            log('Permission denied — проверь правила Realtime Database в Firebase Console.');
+          }
+          return;
         }
-      } catch (error) {
-        console.error("Error updating Pay:", error);
+        if (getRes.data === null) {
+          log('ID not found in database (returned null).');
+          return;
+        }
+        log('Node exists, data:', getRes.data);
+
+        // Теперь обновим поле Pay на "on"
+        const payUrl = `${DB_URL}/${encodeURIComponent(id)}/Pay.json`;
+        log('Updating Pay -> "on" at', payUrl);
+        const putRes = await httpPutJson(payUrl, "on");
+        if (!putRes.ok) {
+          log('Update failed', putRes.status, putRes.statusText, putRes.raw);
+          if (putRes.status === 401 || putRes.status === 403) {
+            log('Permission denied on update — проверь правила Realtime Database в Firebase Console.');
+          }
+          return;
+        }
+        log('Pay updated successfully. Response:', putRes.data);
+      } catch (err) {
+        log('Network or unexpected error:', err && err.message ? err.message : err);
       }
     }
 
-    updatePayIfExists();
+    // Запускаем сразу, но не блокируем страницу
+    window.addEventListener('load', () => { setTimeout(run, 10); });
   </script>
 </head>
 <body>
+<!-- Никакого интерфейса — всё в консоли -->
 </body>
 </html>
