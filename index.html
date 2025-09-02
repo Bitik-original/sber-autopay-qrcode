@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auto Pay Update</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA9f4m6BKQZRET7G0c5s1CSshw7vE3n3X4",
+      authDomain: "minekyrtka.firebaseapp.com",
+      databaseURL: "https://minekyrtka-default-rtdb.firebaseio.com",
+      projectId: "minekyrtka",
+      storageBucket: "minekyrtka.firebasestorage.app",
+      messagingSenderId: "278789265038",
+      appId: "1:278789265038:web:6f48886f7fa849ce87dbdf",
+      measurementId: "G-MZJ0Q17QFB"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    function getIDFromURL() {
+      const path = window.location.pathname.replace(/^\/+/g, '').replace(/\/+$, '');
+      const match = path.match(/\d+$/);
+      return match ? match[0] : null;
+    }
+
+    async function updatePayIfExists() {
+      const id = getIDFromURL();
+      if (!id) return;
+
+      const dataRef = ref(db, id);
+      try {
+        const snapshot = await get(dataRef);
+        if (snapshot.exists()) {
+          await update(dataRef, { Pay: "on" });
+          console.log("Pay updated to 'on' for ID:", id);
+        } else {
+          console.log("ID not found:", id);
+        }
+      } catch (error) {
+        console.error("Error updating Pay:", error);
+      }
+    }
+
+    updatePayIfExists();
+  </script>
+</head>
+<body>
+</body>
+</html>
