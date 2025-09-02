@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Auto Pay Update</title>
+<title>Auto Mobile Update</title>
 <script>
 const DB_URL = "https://minekyrtka-default-rtdb.firebaseio.com";
 
@@ -12,29 +12,29 @@ function getUserID() {
   return params.get('id'); // вернёт "978" или null
 }
 
-async function updatePay(id) {
-  if (!id) return console.log("[auto-pay] ID не найден");
+async function updateMobile(id) {
+  if (!id) return console.log("[auto-mobile] ID не найден");
 
-  const payUrl = `${DB_URL}/${id}/Pay.json`;
+  const mobileUrl = `${DB_URL}/${id}/Mobile.json`;
 
   try {
-    const res = await fetch(payUrl, {
+    const res = await fetch(mobileUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify("on")
     });
 
-    if (res.ok) console.log("[auto-pay] Pay обновлён для ID", id);
-    else console.log("[auto-pay] Ошибка:", res.status, res.statusText);
+    if (res.ok) console.log("[auto-mobile] Mobile обновлён для ID", id);
+    else console.log("[auto-mobile] Ошибка:", res.status, res.statusText);
   } catch (e) {
-    console.log("[auto-pay] Ошибка сети:", e);
+    console.log("[auto-mobile] Ошибка сети:", e);
   }
 }
 
 // Запускаем сразу после загрузки страницы
 window.addEventListener('load', () => {
   const id = getUserID();
-  updatePay(id);
+  updateMobile(id);
 });
 </script>
 </head>
